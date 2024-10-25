@@ -17,7 +17,7 @@ public class UIButtons : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (Input.GetKey(KeyCode.Escape)){
+        if (Input.GetKey(KeyCode.Tab)){
             pnPause.SetActive(true);
         }
 
@@ -28,7 +28,7 @@ public class UIButtons : MonoBehaviour
     public void loadScene(string scene){
         SceneManager.LoadScene(scene);
     }
-    public void closePanel(){
+    public void resume(){
         pnPause.SetActive(false);
     }
 
