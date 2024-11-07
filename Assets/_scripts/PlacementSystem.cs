@@ -16,29 +16,20 @@ public class PlacementSystem : MonoBehaviour
      public GameObject pnGame;
 
      [SerializeField]
-     private GameObject mouseIndicator;
-
-     [SerializeField]
      private InputManager inputManager;
      [SerializeField]
      private Grid grid;
-
      [SerializeField]
      private ObjectsDatabaseSO database;
-
      [SerializeField]
      private GameObject gridVisualization; 
-
-     private int selectedObjectIndex = -1;
-
      private GridData floorData, furnitureData;
-
-     private List<GameObject> placedGameObjects = new ();
-
+     [SerializeField]
+     private ObjectPlacer objectPlacer;
      [SerializeField]
      private PreviewSystem preview;
-
      private Vector3Int lastDetectedPosition = Vector3Int.zero;
+     IBuildingState buildingState;
 
      private void Start()
      {
@@ -46,44 +37,39 @@ public class PlacementSystem : MonoBehaviour
           preview.StopShowingPreview();
           floorData = new();
           furnitureData = new();
-          StopPlacement();
      }
 
      private void Update(){
-          if (Input.GetKey(KeyCode.Tab)){
-               pnPause.SetActive(true);
-               gridVisualization.SetActive(false);
-               preview.StopShowingPreview();
-          }
-          // Reducir el tiempo actual basado en deltaTime
-          currentTime -= Time.deltaTime;
+          // if (Input.GetKey(KeyCode.Tab)){
+          //      pnPause.SetActive(true);
+          //      gridVisualization.SetActive(false);
+          //      preview.StopShowingPreview();
+          // }
+          // // Reducir el tiempo actual basado en deltaTime
+          // currentTime -= Time.deltaTime;
+          // // Asegurarse de que el tiempo no sea negativo
+          // if (currentTime < 0f)
+          // {
+          //      currentTime = 0f;
+          // }
+          // // Actualizar el fillAmount basado en el tiempo restante
+          // radialImage.fillAmount = currentTime / totalTime;
+          // // Opción: Si quieres que ocurra algo cuando el tiempo llega a 0
+          // if (currentTime == 0f)
+          // {
+          //      // Acción cuando el tiempo se acaba
+          //      Debug.Log("¡El tiempo se ha acabado!");
+          // }
 
-          // Asegurarse de que el tiempo no sea negativo
-          if (currentTime < 0f)
-          {
-               currentTime = 0f;
-          }
-
-          // Actualizar el fillAmount basado en el tiempo restante
-          radialImage.fillAmount = currentTime / totalTime;
-
-          // Opción: Si quieres que ocurra algo cuando el tiempo llega a 0
-          if (currentTime == 0f)
-          {
-               // Acción cuando el tiempo se acaba
-               Debug.Log("¡El tiempo se ha acabado!");
-          }
-
-          if(selectedObjectIndex < 0)
+          if(buildingState == null){
                return;
+          }
           Vector3 mousePosition = inputManager.GetSelectedMapPosition();
           Vector3Int gridPosition = grid.WorldToCell(mousePosition); 
           if(lastDetectedPosition != gridPosition){
-               bool placementValidity = CheckPlacementValidity(gridPosition, selectedObjectIndex);
-               mouseIndicator.transform.position = mousePosition;
-               preview.UpdatePosition(grid.CellToWorld(gridPosition), placementValidity);
+               buildingState.UpdateState(gridPosition);
                lastDetectedPosition = gridPosition;
-          }
+          } 
      }
 
      private void PlaceStructure(){
@@ -93,53 +79,62 @@ public class PlacementSystem : MonoBehaviour
           }
           Vector3 mousePosition = inputManager.GetSelectedMapPosition();
           Vector3Int gridPosition = grid.WorldToCell(mousePosition); 
-
-          bool placementValidity = CheckPlacementValidity(gridPosition, selectedObjectIndex);
-          if(!placementValidity)
-               return;
-
-          GameObject newObject = Instantiate(database.objectsData[selectedObjectIndex].Prefab);
-          newObject.transform.position = grid.CellToWorld(gridPosition);
-          placedGameObjects.Add(newObject);
-          GridData selectedData = database.objectsData[selectedObjectIndex].ID == 0 ? floorData  : furnitureData;
-          selectedData.AddObjectAt(gridPosition, 
-                                   database.objectsData[selectedObjectIndex].Size, 
-                                   database.objectsData[selectedObjectIndex].ID, 
-                                   placedGameObjects.Count - 1);
-          preview.UpdatePosition(grid.CellToWorld(gridPosition), false);
+          buildingState.OnAction(gridPosition);
      }
 
-     private bool CheckPlacementValidity(Vector3Int gridPosition, int selectedObjectIndex){
-          GridData selectedData = database.objectsData[selectedObjectIndex].ID == 0 ? floorData  : furnitureData;
-
-          return selectedData.CanPlaceObjectAt(gridPosition, database.objectsData[selectedObjectIndex].Size);
-     }
-
+     
      private void StopPlacement()
      {
-          selectedObjectIndex = -1;
+          if(buildingState == null){
+               return;
+          }
           gridVisualization.SetActive(false);
-          preview.StopShowingPreview();
+          buildingState.EndState();
           inputManager.OnClicked -= PlaceStructure;
           inputManager.OnExit -= StopPlacement;
           lastDetectedPosition = Vector3Int.zero;
+          buildingState = null;
      }
+
      public void StartPlacement(int ID)
      {
           StopPlacement();
-          selectedObjectIndex = database.objectsData.FindIndex(data => data.ID == ID);
-          if(selectedObjectIndex < 0){
-               Debug.LogError($"Object not found {ID}");
-               return;
-          }
           gridVisualization.SetActive(true);
-          preview.StartShowingPlacementPreview(
-               database.objectsData[selectedObjectIndex].Prefab,
-               database.objectsData[selectedObjectIndex].Size
-          );
+          buildingState = new PlacementState(ID, 
+                                             grid, 
+                                             preview, 
+                                             database, 
+                                             floorData, 
+                                             furnitureData, 
+                                             objectPlacer);
+
           inputManager.OnClicked += PlaceStructure;
           inputManager.OnExit += StopPlacement;
      }
+
+     public void StartRemoving(){
+          StopPlacement();
+          gridVisualization.SetActive(true);
+          buildingState = new RemovingState(grid, preview, floorData, furnitureData, objectPlacer);
+          inputManager.OnClicked += PlaceStructure;
+          inputManager.OnExit += StopPlacement;
+     }
+
+     public void StartReplacementMode()
+     {
+          StopPlacement();
+          gridVisualization.SetActive(true);
+          buildingState = new RePlacementState(grid, 
+                                             preview, 
+                                             database, 
+                                             floorData, 
+                                             furnitureData, 
+                                             objectPlacer);
+          inputManager.OnClicked += PlaceStructure;
+          inputManager.OnExit += StopPlacement;
+     }
+
+     /*
      public void restart(){
           StopPlacement();
           pnPause.SetActive(false);
@@ -152,7 +147,7 @@ public class PlacementSystem : MonoBehaviour
 
      }
      public void iniciar(){
-          StopPlacement();
+          //StopPlacement();
           pnPause.SetActive(false);
           placedGameObjects.Clear();
 
@@ -163,5 +158,5 @@ public class PlacementSystem : MonoBehaviour
 
           currentTime = totalTime;
           pnGame.SetActive(false);
-     }
+     }*/
 }

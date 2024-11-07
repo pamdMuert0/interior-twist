@@ -28,6 +28,13 @@ public class PreviewSystem : MonoBehaviour
         PrepareCursor(size);
         cellIndicator.SetActive(true);
     }
+
+    public void StartShowingRemovePreview(){
+        cellIndicator.SetActive(true);
+        PrepareCursor(Vector2Int.one);
+        ApplyFeedbackToCursor(false);
+    }
+
     public void PrepareCursor(Vector2Int size){
         if(size.x > 0 || size.y > 0){
             cellIndicator.transform.localScale = new Vector3(size.x, 1, size.y);
@@ -49,19 +56,28 @@ public class PreviewSystem : MonoBehaviour
     }
     public void StopShowingPreview(){
         cellIndicator.SetActive(false);
-        Destroy(previewObject);
+        if(previewObject != null)
+            Destroy(previewObject);
 
     }
     public void UpdatePosition(Vector3 position, bool validity){
-        MovePreview(position);
+        if(previewObject != null){
+            MovePreview(position);
+            ApplyFeedbackToPreview(validity);
+        }
         MoveCursor(position);
-        ApplyFeedback(validity);
+        ApplyFeedbackToCursor(validity);
     }
-    public void ApplyFeedback(bool validity){
+    public void ApplyFeedbackToPreview(bool validity){
         Color c = validity ? Color.white : Color.red;
-        cellIndicatorRenderer.material.color = c;
         c.a = 0.5f;
         previewMaterialInstance.color = c;
+        
+    }
+    public void ApplyFeedbackToCursor(bool validity){
+        Color c = validity ? Color.white : Color.red;
+        c.a = 0.5f;
+        cellIndicatorRenderer.material.color = c;
         
     }
     private void MoveCursor(Vector3 position){
