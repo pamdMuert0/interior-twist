@@ -40,6 +40,7 @@ public class PreviewSystem : MonoBehaviour
             cellIndicator.transform.localScale = new Vector3(size.x, 1, size.y);
             cellIndicator.GetComponentInChildren<Renderer>().material.mainTextureScale = size;
         }
+        // para el commit
     }
     private void PreparePreview(GameObject previewObject)
     {
