@@ -2,8 +2,9 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class PlacementState : IBuildingState
+public class PlacementState : IBuildingState, IRotatable
 {
+    private bool isRotated = false;
     private int selectedObjectIndex = -1;
     int ID;
     Grid grid;
@@ -41,6 +42,7 @@ public class PlacementState : IBuildingState
             throw new System.Exception($"No object with ID {ID}");
         } 
     }
+    
 
     public void EndState(){
         previewSystem.StopShowingPreview();
@@ -53,11 +55,15 @@ public class PlacementState : IBuildingState
             // aqui va el audio de error
             return;
         }
+
+        GameObject prefab = database.objectsData[selectedObjectIndex].Prefab;
+        Vector3 rotation = isRotated ? new Vector3(0, 90, 0) : Vector3.zero;
         int index = objectPlacer.PlaceObject(database.objectsData[selectedObjectIndex].Prefab, 
-                                            grid.CellToWorld(gridPosition));
+                                            grid.CellToWorld(gridPosition),
+                                            rotation);
         GridData selectedData = database.objectsData[selectedObjectIndex].ID == 0 ? floorData  : furnitureData;
         selectedData.AddObjectAt(gridPosition, 
-                                database.objectsData[selectedObjectIndex].Size, 
+                                GetCurrentObjectSize(), 
                                 database.objectsData[selectedObjectIndex].ID, 
                                 index);
 
@@ -71,8 +77,20 @@ public class PlacementState : IBuildingState
     
     private bool CheckPlacementValidity(Vector3Int gridPosition, int selectedObjectIndex){
         GridData selectedData = database.objectsData[selectedObjectIndex].ID == 0 ? floorData  : furnitureData;
-        return selectedData.CanPlaceObjectAt(gridPosition, database.objectsData[selectedObjectIndex].Size);
+        return selectedData.CanPlaceObjectAt(gridPosition, GetCurrentObjectSize());
     }
 
+    public void Rotate()
+    {
+        isRotated = !isRotated;
+        previewSystem.RotatePreview();
+        Vector3Int currentGridPosition = grid.WorldToCell(previewSystem.GetCurrentPosition());
+        UpdateState(currentGridPosition);
+    }
     
+    private Vector2Int GetCurrentObjectSize()
+    {
+        Vector2Int originalSize = database.objectsData[selectedObjectIndex].Size;
+        return isRotated ? new Vector2Int(originalSize.y, originalSize.x) : originalSize;
+    }
 }

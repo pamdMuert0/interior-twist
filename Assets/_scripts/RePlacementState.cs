@@ -1,11 +1,12 @@
 using UnityEngine;
 
-public class RePlacementState : IBuildingState
+public class RePlacementState : IBuildingState, IRotatable
 {
     private int selectedObjectIndex = -1;
     private int originalObjectIndex = -1;
     private Vector3Int originalPosition;
     private Vector2Int originalSize;
+    private bool isRotated = false;
     
     private Grid grid;
     private PreviewSystem previewSystem;
@@ -103,17 +104,19 @@ public class RePlacementState : IBuildingState
         // Remover el objeto original
         objectPlacer.RemoveObjectAt(originalObjectIndex);
 
+        Vector3 rotation = isRotated ? new Vector3(0, 90, 0) : Vector3.zero;
         // Colocar el objeto en la nueva posición
         int newIndex = objectPlacer.PlaceObject(
             database.objectsData[selectedObjectIndex].Prefab,
-            grid.CellToWorld(gridPosition)
+            grid.CellToWorld(gridPosition),
+            rotation
         );
 
         // Actualizar la grid con la nueva posición
         GridData selectedData = database.objectsData[selectedObjectIndex].ID == 0 ? floorData : furnitureData;
         selectedData.AddObjectAt(
             gridPosition,
-            database.objectsData[selectedObjectIndex].Size,
+            GetCurrentObjectSize(),
             database.objectsData[selectedObjectIndex].ID,
             newIndex
         );
@@ -163,5 +166,22 @@ public class RePlacementState : IBuildingState
                           !floorData.CanPlaceObjectAt(position, Vector2Int.one);
             previewSystem.UpdatePosition(grid.CellToWorld(position), validity);
         }
+    }
+
+    public void Rotate()
+    {
+        if (selectedObjectIndex != -1)
+        {
+            isRotated = !isRotated;
+            previewSystem.RotatePreview();
+            Vector3Int currentGridPosition = grid.WorldToCell(previewSystem.GetCurrentPosition());
+            UpdateState(currentGridPosition);
+        }
+    }
+
+    private Vector2Int GetCurrentObjectSize()
+    {
+        Vector2Int originalSize = database.objectsData[selectedObjectIndex].Size;
+        return isRotated ? new Vector2Int(originalSize.y, originalSize.x) : originalSize;
     }
 }

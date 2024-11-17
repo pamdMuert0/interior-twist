@@ -31,15 +31,40 @@ public class PlacementSystem : MonoBehaviour
      private Vector3Int lastDetectedPosition = Vector3Int.zero;
      IBuildingState buildingState;
 
+     [SerializeField]
+     private SaveSystem saveSystem;
+
      private void Start()
      {
           gridVisualization.SetActive(false);
           preview.StopShowingPreview();
           floorData = new();
           furnitureData = new();
+          saveSystem.Initialize(floorData,furnitureData,grid);
      }
 
      private void Update(){
+
+          if (Input.GetKeyDown(KeyCode.R))
+          {
+               if (buildingState is IRotatable rotatableState)
+               {
+                    rotatableState.Rotate();
+               }
+          }
+
+          // Guardar con S
+          if (Input.GetKeyDown(KeyCode.S))
+          {
+               Debug.Log("jojo");
+               saveSystem?.SaveScene();
+          }
+          
+          // Cargar con L
+          if (Input.GetKeyDown(KeyCode.L))
+          {
+               saveSystem?.LoadScene();
+          }
           // if (Input.GetKey(KeyCode.Tab)){
           //      pnPause.SetActive(true);
           //      gridVisualization.SetActive(false);

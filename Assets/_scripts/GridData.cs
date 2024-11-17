@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System.Linq;
 
 public class GridData 
 {
@@ -57,6 +58,11 @@ public class GridData
             return placedObjects[gridPosition].ID;
         }
         return -1;
+    }
+
+    public List<Vector3Int> GetAllPositions()
+    {
+        return placedObjects.Keys.ToList();
     }
 }
 public class PlacementData
